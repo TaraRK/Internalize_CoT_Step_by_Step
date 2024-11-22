@@ -101,6 +101,7 @@ def main():
     parser.add_argument('--bf16', action='store_true')
     parser.add_argument('--layer_names', type=str, nargs='+', help='Name of layer to cache activations from (e.g., transformer_layer_0, embedding)')
     parser.add_argument('--cache_dir', type=str, default='activation_cache', help='Directory to store cached activations')
+    parser.add_argument('--use_cpu', type=bool, default=False)
     parser.set_defaults(bf16=False)
     args = parser.parse_args()
 
@@ -118,7 +119,7 @@ def main():
 
     # Load model
     print (f'Loading from {args.from_pretrained}')
-    model = ImplicitModel.from_pretrained(args.from_pretrained).to(device).to(ptdtype)
+    model = ImplicitModel.from_pretrained(args.from_pretrained, args.use_cpu).to(device).to(ptdtype)
     model = model.to(device).to(ptdtype)
     model.eval()
     tokenizer = model.tokenizer
@@ -136,7 +137,7 @@ def main():
         model, 
         args.max_new_tokens,
         layer_names=args.layer_names,
-        cache_dir=args.cache_dir
+        cache_dir=args.cache_dir, 
     )
 
     print (f"Test Accuracy: {accuracy}. Throughput: {throughput}")

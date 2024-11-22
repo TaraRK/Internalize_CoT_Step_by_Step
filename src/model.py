@@ -131,10 +131,14 @@ class ImplicitModel(nn.Module):
         return beam_output
 
     @classmethod
-    def from_pretrained(self, pretrained_path):
+    def from_pretrained(self, pretrained_path, use_cpu = False):
         config = ImplicitModelConfig.from_pretrained(pretrained_path)
         model = ImplicitModel(config)
-        state_dict = torch.load(os.path.join(pretrained_path, 'state_dict.bin'))
+        if use_cpu:
+
+            state_dict = torch.load(os.path.join(pretrained_path, 'state_dict.bin'), map_location = torch.device('cpu'))
+        else:
+            state_dict = torch.load(os.path.join(pretrained_path, 'state_dict.bin'))
         model.load_state_dict(state_dict, strict=True)
         return model
 
