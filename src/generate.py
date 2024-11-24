@@ -44,6 +44,7 @@ def evaluate(dataloader, tokenizer, device, ctx, model, max_new_tokens,  layer_n
             labels = batch['labels_all']
             sep_positions = get_sep_position(input_ids_all, tokenizer.eos_token_id)
             input_ids = input_ids_all[:, :sep_positions.max()+1]
+            print(tokenizer.decode(input_ids[0], skip_special_tokens=True))
             batch_size = input_ids.shape[0]
             total_instances += batch_size
 
@@ -67,7 +68,7 @@ def evaluate(dataloader, tokenizer, device, ctx, model, max_new_tokens,  layer_n
                 tgt = input_ids_all_i[sep_position+1:]
                 tgt_text = tokenizer.decode(tgt, skip_special_tokens=True)
                 ans = extract_answer(tgt_text)
-                pred_text = tokenizer.decode(beam_output_i[0][sep_position+1:], skip_special_tokens=True)
+                pred_text = tokenizer.decode(beam_output_i[0][sep_position+2:], skip_special_tokens=True)
                 pred_ans = extract_answer(pred_text)
                 if ans == pred_ans:
                     total_correct += 1

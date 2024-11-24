@@ -106,7 +106,7 @@ def create_scatter_plot(transformed, numeric_values, full_labels, layer_name, sa
     )
     
     # Show plot interactively
-    fig.show()
+    # fig.show()
     fig.write_image(os.path.join(save_dir, f'{layer_name}_{title.lower()}.png'), scale=2)
 
 def analyze_pca_with_math_labels(
