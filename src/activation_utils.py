@@ -142,33 +142,45 @@ import os
 class ActivationCache:
     def __init__(self, cache_dir: str, pred_token_idx: int = -1):
         self.cache_dir = cache_dir
-        self.activations: Dict[str, list] = {}  # layer_name -> list of activations
-        self.pred_token_idx = pred_token_idx  # Specifies which prediction token to cache
+        self.activations: Dict[str, list] = {}
+        self.pred_token_idx = pred_token_idx
+        self.current_token_count = {}  # Track per-batch token counts
         os.makedirs(cache_dir, exist_ok=True)
         
     def cache_activation(self, activation: Union[torch.Tensor, Tuple], layer_name: str):
-        """Cache activation for the specified prediction token"""
         if isinstance(activation, tuple):
             activation = activation[0]
-        
+            
         if layer_name not in self.activations:
             self.activations[layer_name] = []
-        
+            self.current_token_count[layer_name] = {}
+            
+        batch_size = activation.size(0)
         seq_len = activation.size(1)
         
-        # Handle negative and positive indices
-        index = self.pred_token_idx if self.pred_token_idx >= 0 else seq_len + self.pred_token_idx
-        
-        if 0 <= index < seq_len:
-            pred_activation = activation[:, index, :]
-            act_np = pred_activation.detach().cpu().numpy()
-            self.activations[layer_name].append(act_np)
-        else:
-            # Index out of bounds
-            pass  # You may log this event if necessary
-        
+        # Initialize token counts for new batch items
+        for batch_idx in range(batch_size):
+            if batch_idx not in self.current_token_count[layer_name]:
+                self.current_token_count[layer_name][batch_idx] = 0
+                
+        if seq_len == 1:  # Streaming case
+            for batch_idx in range(batch_size):
+                self.current_token_count[layer_name][batch_idx] += 1
+                if self.current_token_count[layer_name][batch_idx] == self.pred_token_idx + 1:
+                    act_np = activation[batch_idx, -1, :].detach().cpu().numpy()
+                    self.activations[layer_name].append(act_np)
+        else:  # Batch case
+            index = self.pred_token_idx if self.pred_token_idx >= 0 else seq_len + self.pred_token_idx
+            if 0 <= index < seq_len:
+                pred_activation = activation[:, index, :]
+                act_np = pred_activation.detach().cpu().numpy()
+                self.activations[layer_name].append(act_np)
+    
+    def reset_counters(self):
+        """Reset token counters for new generation"""
+        self.current_token_count = {layer: {} for layer in self.activations.keys()}
+
     def save_checkpoint(self, checkpoint_number: int):
-        """Save current activations as a checkpoint"""
         checkpoint_dir = os.path.join(self.cache_dir, f'checkpoint_{checkpoint_number}')
         os.makedirs(checkpoint_dir, exist_ok=True)
         
@@ -179,12 +191,9 @@ class ActivationCache:
                 combined = np.concatenate(acts, axis=0)
                 save_path = os.path.join(checkpoint_dir, f"{layer_name}_{token_suffix}.npy")
                 np.save(save_path, combined)
-                print(f"Checkpoint {checkpoint_number}: Saved {layer_name} activations of shape {combined.shape} to {save_path}")
-        # Clear activations after checkpointing
-        self.activations.clear()
-    
+                print(f"Checkpoint {checkpoint_number}: Saved {layer_name} activations of shape {combined.shape}")
+                
     def save_to_disk(self, final: bool = True):
-        """Save final activations to disk"""
         if final and self.activations:
             final_dir = os.path.join(self.cache_dir, 'final')
             os.makedirs(final_dir, exist_ok=True)
@@ -196,9 +205,14 @@ class ActivationCache:
                     combined = np.concatenate(acts, axis=0)
                     save_path = os.path.join(final_dir, f"{layer_name}_{token_suffix}.npy")
                     np.save(save_path, combined)
-                    print(f"Final Save: Saved {layer_name} activations of shape {combined.shape} to {save_path}")
-            # Clear activations after saving
+                    print(f"Final: Saved {layer_name} activations of shape {combined.shape}")
             self.activations.clear()
+            self.current_token_count.clear()
+            
+    def clear(self):
+        self.activations.clear()
+        self.current_token_count.clear()
+
 def get_activation_hook(cache: ActivationCache, layer_name: str):
     """Creates a hook function for capturing activations"""
     return lambda module, input, output: cache.cache_activation(output, layer_name)

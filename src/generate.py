@@ -89,37 +89,104 @@ logging.disable(logging.WARNING)
 #     accuracy = total_correct / total_instances
 #     throughput = total_instances / total_time
 #     return accuracy, throughput
-def evaluate(dataloader, tokenizer, device, ctx, model, max_new_tokens, pred_token_idx=0,  layer_names=None, cache_dir=None, checkpoint_every=100):
+# def evaluate(dataloader, tokenizer, device, ctx, model, max_new_tokens, pred_token_idx=0,  layer_names=None, cache_dir=None, checkpoint_every=100):
+#     model.eval()
+#     total_instances = 0
+#     total_correct = 0
+#     total_time = 0
+#     total_samples_processed = 0  # Initialize sample counter
+
+#     # Set up activation caching if layer_names specified
+#     activation_cache = None
+#     hooks = None
+#     if layer_names:
+#         from activation_utils import ActivationCache, attach_hooks_to_layers
+#         activation_cache = ActivationCache(cache_dir, pred_token_idx)
+#         hooks = attach_hooks_to_layers(model, layer_names, activation_cache)
+#         print(f'hooks: {hooks}')
+#     try:
+
+#         for batch in tqdm.tqdm(dataloader):
+#             input_ids_all = batch['input_ids_all'].to(device)
+#             labels = batch['labels_all']
+#             sep_positions = get_sep_position(input_ids_all, tokenizer.eos_token_id)
+#             input_ids = input_ids_all[:, :sep_positions.max()+1]
+#             batch_size = input_ids.shape[0]
+#             total_instances += batch_size
+#             total_samples_processed += batch_size  # Update total samples
+
+#             # Set input length for activation caching (if needed)
+#             if activation_cache is not None:
+#                 pass  # No longer needed since we're not using input_length
+
+#             # Generate
+#             start_time = time.time()
+#             beam_output = model.generate(
+#                 input_ids=input_ids,
+#                 max_new_tokens=max_new_tokens,
+#                 stop_on_two_eos=True,
+#             )
+#             end_time = time.time()
+#             total_time += end_time - start_time
+
+#             # Evaluate
+#             for i, (input_ids_all_i, beam_output_i) in enumerate(zip(input_ids_all, beam_output)):
+#                 sep_position = sep_positions[i].item()
+#                 tgt = input_ids_all_i[sep_position+1:]
+#                 tgt_text = tokenizer.decode(tgt, skip_special_tokens=True)
+#                 ans = extract_answer(tgt_text)
+#                 pred_text = tokenizer.decode(beam_output_i[0][sep_position+1:], skip_special_tokens=True)
+#                 pred_ans = extract_answer(pred_text)
+#                 if ans == pred_ans:
+#                     total_correct += 1
+#                 print (f'Input: {tokenizer.decode(input_ids_all_i[:sep_position], skip_special_tokens=True)}')
+#                 print (f'Target: {tgt_text}')
+#                 print (f'Predicted: {pred_text}')
+#                 print ('')
+
+#             # Save checkpoints every checkpoint_every samples
+#             if activation_cache is not None and (total_samples_processed % checkpoint_every == 0):
+#                 activation_cache.save_checkpoint(total_samples_processed)
+
+#     finally:
+#         if hooks:
+#             for hook in hooks:
+#                 hook.remove()
+#         # Save any remaining activations
+#         if activation_cache is not None:
+#             activation_cache.save_to_disk(final=True)
+
+#     accuracy = total_correct / total_instances
+#     throughput = total_instances / total_time
+#     return accuracy, throughput
+def evaluate(dataloader, tokenizer, device, ctx, model, max_new_tokens, n=2, layer_names=None, cache_dir=None, checkpoint_every=100):
     model.eval()
     total_instances = 0
     total_correct = 0
     total_time = 0
-    total_samples_processed = 0  # Initialize sample counter
+    total_samples_processed = 0
 
-    # Set up activation caching if layer_names specified
     activation_cache = None
     hooks = None
     if layer_names:
         from activation_utils import ActivationCache, attach_hooks_to_layers
-        activation_cache = ActivationCache(cache_dir, pred_token_idx)
+        activation_cache = ActivationCache(cache_dir, pred_token_idx=n)
         hooks = attach_hooks_to_layers(model, layer_names, activation_cache)
-        print(f'hooks: {hooks}')
-    try:
 
+    try:
         for batch in tqdm.tqdm(dataloader):
             input_ids_all = batch['input_ids_all'].to(device)
             labels = batch['labels_all']
             sep_positions = get_sep_position(input_ids_all, tokenizer.eos_token_id)
             input_ids = input_ids_all[:, :sep_positions.max()+1]
+            
+            if activation_cache is not None:
+                activation_cache.reset_counters()  # Reset counter before each generation
+                
             batch_size = input_ids.shape[0]
             total_instances += batch_size
-            total_samples_processed += batch_size  # Update total samples
+            total_samples_processed += batch_size
 
-            # Set input length for activation caching (if needed)
-            if activation_cache is not None:
-                pass  # No longer needed since we're not using input_length
-
-            # Generate
             start_time = time.time()
             beam_output = model.generate(
                 input_ids=input_ids,
@@ -129,22 +196,6 @@ def evaluate(dataloader, tokenizer, device, ctx, model, max_new_tokens, pred_tok
             end_time = time.time()
             total_time += end_time - start_time
 
-            # Evaluate
-            for i, (input_ids_all_i, beam_output_i) in enumerate(zip(input_ids_all, beam_output)):
-                sep_position = sep_positions[i].item()
-                tgt = input_ids_all_i[sep_position+1:]
-                tgt_text = tokenizer.decode(tgt, skip_special_tokens=True)
-                ans = extract_answer(tgt_text)
-                pred_text = tokenizer.decode(beam_output_i[0][sep_position+1:], skip_special_tokens=True)
-                pred_ans = extract_answer(pred_text)
-                if ans == pred_ans:
-                    total_correct += 1
-                print (f'Input: {tokenizer.decode(input_ids_all_i[:sep_position], skip_special_tokens=True)}')
-                print (f'Target: {tgt_text}')
-                print (f'Predicted: {pred_text}')
-                print ('')
-
-            # Save checkpoints every checkpoint_every samples
             if activation_cache is not None and (total_samples_processed % checkpoint_every == 0):
                 activation_cache.save_checkpoint(total_samples_processed)
 
@@ -152,7 +203,6 @@ def evaluate(dataloader, tokenizer, device, ctx, model, max_new_tokens, pred_tok
         if hooks:
             for hook in hooks:
                 hook.remove()
-        # Save any remaining activations
         if activation_cache is not None:
             activation_cache.save_to_disk(final=True)
 
