@@ -174,7 +174,7 @@ def evaluate(dataloader, tokenizer, device, ctx, model, max_new_tokens, n=2, lay
         hooks = attach_hooks_to_layers(model, layer_names, activation_cache)
 
     try:
-        for batch in tqdm.tqdm(dataloader):
+        for batch_idx, batch in enumerate(tqdm.tqdm(dataloader)):
             input_ids_all = batch['input_ids_all'].to(device)
             labels = batch['labels_all']
             sep_positions = get_sep_position(input_ids_all, tokenizer.eos_token_id)
@@ -198,6 +198,8 @@ def evaluate(dataloader, tokenizer, device, ctx, model, max_new_tokens, n=2, lay
 
             if activation_cache is not None and (total_samples_processed % checkpoint_every == 0):
                 activation_cache.save_checkpoint(total_samples_processed)
+
+            
 
     finally:
         if hooks:

@@ -167,15 +167,16 @@ class ActivationCache:
             for batch_idx in range(batch_size):
                 self.current_token_count[layer_name][batch_idx] += 1
                 if self.current_token_count[layer_name][batch_idx] == self.pred_token_idx + 1:
-                    act_np = activation[batch_idx, -1, :].detach().cpu().numpy()
+                    # Ensure we keep batch dimension by using unsqueeze
+                    act_np = activation[batch_idx:batch_idx+1, -1, :].detach().cpu().numpy()
                     self.activations[layer_name].append(act_np)
         else:  # Batch case
             index = self.pred_token_idx if self.pred_token_idx >= 0 else seq_len + self.pred_token_idx
             if 0 <= index < seq_len:
-                pred_activation = activation[:, index, :]
+                pred_activation = activation[:, index, :]  # This keeps batch dimension
                 act_np = pred_activation.detach().cpu().numpy()
                 self.activations[layer_name].append(act_np)
-    
+
     def reset_counters(self):
         """Reset token counters for new generation"""
         self.current_token_count = {layer: {} for layer in self.activations.keys()}
@@ -188,10 +189,15 @@ class ActivationCache:
         
         for layer_name, acts in self.activations.items():
             if acts:
-                combined = np.concatenate(acts, axis=0)
-                save_path = os.path.join(checkpoint_dir, f"{layer_name}_{token_suffix}.npy")
-                np.save(save_path, combined)
-                print(f"Checkpoint {checkpoint_number}: Saved {layer_name} activations of shape {combined.shape}")
+                try:
+                    combined = np.concatenate(acts, axis=0)
+                    save_path = os.path.join(checkpoint_dir, f"{layer_name}_{token_suffix}.npy")
+                    np.save(save_path, combined)
+                    print(f"Checkpoint {checkpoint_number}: Saved {layer_name} activations of shape {combined.shape}")
+                except ValueError as e:
+                    print(f"Error combining activations for {layer_name}: {e}")
+                    print(f"Activation shapes: {[act.shape for act in acts]}")
+                    raise
                 
     def save_to_disk(self, final: bool = True):
         if final and self.activations:
@@ -202,10 +208,15 @@ class ActivationCache:
             
             for layer_name, acts in self.activations.items():
                 if acts:
-                    combined = np.concatenate(acts, axis=0)
-                    save_path = os.path.join(final_dir, f"{layer_name}_{token_suffix}.npy")
-                    np.save(save_path, combined)
-                    print(f"Final: Saved {layer_name} activations of shape {combined.shape}")
+                    try:
+                        combined = np.concatenate(acts, axis=0)
+                        save_path = os.path.join(final_dir, f"{layer_name}_{token_suffix}.npy")
+                        np.save(save_path, combined)
+                        print(f"Final: Saved {layer_name} activations of shape {combined.shape}")
+                    except ValueError as e:
+                        print(f"Error combining activations for {layer_name}: {e}")
+                        print(f"Activation shapes: {[act.shape for act in acts]}")
+                        raise
             self.activations.clear()
             self.current_token_count.clear()
             
