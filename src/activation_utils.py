@@ -248,4 +248,3 @@ def attach_hooks_to_layers(model, layer_names: list, cache: ActivationCache):
         hooks.append(hook)
     print(f"Attached {len(hooks)} hooks.")
     return hooks
-
