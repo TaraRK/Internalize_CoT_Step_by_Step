@@ -130,17 +130,22 @@ class ImplicitModel(nn.Module):
                 beam_output.append(beam_output_i)
         return beam_output
 
+    # @classmethod
+    # def from_pretrained(self, pretrained_path):
+    #     config = ImplicitModelConfig.from_pretrained(pretrained_path)
+    #     model = ImplicitModel(config)
+    #     state_dict = torch.load(os.path.join(pretrained_path, 'state_dict.bin'))
+    #     model.load_state_dict(state_dict, strict=True)
+    #     return model
     @classmethod
-    def from_pretrained(self, pretrained_path, use_cpu = False):
+    def from_pretrained(cls, pretrained_path):
         config = ImplicitModelConfig.from_pretrained(pretrained_path)
         model = ImplicitModel(config)
-        if use_cpu:
-
-            state_dict = torch.load(os.path.join(pretrained_path, 'state_dict.bin'), map_location = torch.device('cpu'))
-        else:
-            state_dict = torch.load(os.path.join(pretrained_path, 'state_dict.bin'))
+        state_dict_path = os.path.join(pretrained_path, 'state_dict.bin')
+        state_dict = torch.load(state_dict_path, map_location='cpu')  # Map tensors to CPU
         model.load_state_dict(state_dict, strict=True)
         return model
+
 
     def save_pretrained(self, save_directory):
         print (f'Saving to {save_directory}')
