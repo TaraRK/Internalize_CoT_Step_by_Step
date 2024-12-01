@@ -33,9 +33,8 @@ def extract_labels_from_expressions(expressions_file: str) -> Tuple[List[str], n
     return full_labels, np.array(numeric_values)
 
 full_labels, numeric_values = extract_labels_from_expressions("data/4_by_4_mult/test_bigbench.txt")
-print(full_labels)
 #%% 
-def load_activations_with_labels(activation_dir: str, expressions_file: str):
+def load_activations_with_labels(activation_dir: str, expressions_file: str, pred_token_idx: int):
     """Load activations from final folder and their corresponding labels"""
     full_labels, numeric_values = extract_labels_from_expressions(expressions_file)
     print(f"Loaded {len(full_labels)} labels")
@@ -46,10 +45,10 @@ def load_activations_with_labels(activation_dir: str, expressions_file: str):
         
     activations = {}
     for filename in os.listdir(final_dir):
-        if not filename.endswith('_first_pred.npy'):
+        if not filename.endswith(f'_pred_token_{pred_token_idx}.npy'):
             continue
             
-        layer_name = filename.replace('_first_pred.npy', '')
+        layer_name = filename.replace(f'_pred_token_{pred_token_idx}.npy', '')
         filepath = os.path.join(final_dir, filename)
         
         print(f"Loading activations from {filepath}")
@@ -118,7 +117,8 @@ def analyze_pca_with_math_labels(
     """Perform PCA analysis with scatter plots colored by numeric value"""
     os.makedirs(save_dir, exist_ok=True)
     
-    for layer_name, acts in activations.items().sorted():
+    for layer_name, acts in activations.items():
+        print(layer_name)
         print(f"\nAnalyzing {layer_name}...")
         
         # Perform PCA
@@ -155,6 +155,8 @@ def main():
                           help='Directory containing activation files')
         parser.add_argument('--expressions_file', default='data/4_by_4_mult/test_bigbench.txt', type=str,
                           help='File containing math expressions with labels')
+        parser.add_argument('--pred_token_idx', default=2, type=int,
+                          help='Index of the predicted token')
         parser.add_argument('--save_dir', type=str, default='pca_results_labels_2',
                           help='Directory to save PCA results')
         parser.add_argument('--visualization', type=str, default='both',
@@ -176,7 +178,8 @@ def main():
         args = Args()
     activations, full_labels, numeric_values = load_activations_with_labels(
         args.activation_dir, 
-        args.expressions_file
+        args.expressions_file,
+        args.pred_token_idx
     )
     
     if args.clustering == 'pca':

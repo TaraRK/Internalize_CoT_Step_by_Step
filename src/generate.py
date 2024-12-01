@@ -179,6 +179,8 @@ def evaluate(dataloader, tokenizer, device, ctx, model, max_new_tokens, n=2, lay
             labels = batch['labels_all']
             sep_positions = get_sep_position(input_ids_all, tokenizer.eos_token_id)
             input_ids = input_ids_all[:, :sep_positions.max()+1]
+            # for input_id in input_ids:
+            #     print(tokenizer.decode(input_id))
             
             if activation_cache is not None:
                 activation_cache.reset_counters()  # Reset counter before each generation
@@ -198,7 +200,6 @@ def evaluate(dataloader, tokenizer, device, ctx, model, max_new_tokens, n=2, lay
 
             if activation_cache is not None and (total_samples_processed % checkpoint_every == 0):
                 activation_cache.save_checkpoint(total_samples_processed)
-
             
 
     finally:
@@ -244,7 +245,7 @@ def main():
 
     # Load model
     print (f'Loading from {args.from_pretrained}')
-    model = ImplicitModel.from_pretrained(args.from_pretrained, args.use_cpu).to(device).to(ptdtype)
+    model = ImplicitModel.from_pretrained(args.from_pretrained).to(device).to(ptdtype)
     model = model.to(device).to(ptdtype)
     model.eval()
     tokenizer = model.tokenizer

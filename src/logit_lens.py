@@ -5,13 +5,13 @@ from nnsight import LanguageModel
 from model import ImplicitModel
 from transformer_lens import HookedTransformer
 import torch
-activations = np.load("../cached_activations/final/transformer_layer_11_first_pred.npy")
+activations = np.load("../cached_activations/final/transformer_layer_11_pred_token_2.npy")
 print(activations.shape)
 
 # %%
 device = "cuda:5"
 checkpoint_dir = "../trained_models/final_checkpoint"
-impl_model = ImplicitModel.from_pretrained(checkpoint_dir, use_cpu=True)
+impl_model = ImplicitModel.from_pretrained(checkpoint_dir)
 model = HookedTransformer.from_pretrained('gpt2', hf_model=impl_model.base_model)
 tokenizer = impl_model.tokenizer
 # %%
@@ -25,4 +25,7 @@ probs = torch.from_numpy(activations_logits).softmax(dim=-1).argmax(dim=-1)
 print(probs.shape)
 print(probs)
 print(tokenizer.decode(probs))
+# %%
+probs[1]
+
 # %%

@@ -18,10 +18,11 @@ activations_dir = 'cached_activations/final/'
 
 probe_labels_path = 'probe_labels.npy'
 probe_labels = np.load('probe_labels.npy', allow_pickle=True).item() # Shape: (1000,)
+suffix = "_pred_token_2"
 
-all_activations = [np.load(os.path.join(activations_dir, f"embedding_first_pred.npy"))]
+all_activations = [np.load(os.path.join(activations_dir, f"embedding{suffix}.npy"))]
 for i in range(12):
-    activations = np.load(os.path.join(activations_dir, f"transformer_layer_{i}_first_pred.npy"))  # Shape: (1000, 768)
+    activations = np.load(os.path.join(activations_dir, f"transformer_layer_{i}{suffix}.npy"))  # Shape: (1000, 768)
     all_activations.append(activations)
 
 all_activations = np.array(all_activations)
@@ -48,11 +49,11 @@ def get_linear_probe_scores(reps, labels, split=0.8):
     train_states, test_states = labels[:num_train], labels[num_train:]
     state_probe.fit(train_reps, train_states)
     return state_probe.score(test_reps, test_states), state_probe
+
+probe_labels.keys()
 #%% 
 for layer in tqdm(layer_idxs):
     for score_type in probe_labels:
-        if score_type != 'Second Num of Output': 
-            continue
         score, _ = get_linear_probe_scores(
             all_activations[layer], probe_labels[score_type],
         )

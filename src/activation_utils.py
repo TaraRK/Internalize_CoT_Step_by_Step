@@ -162,7 +162,7 @@ class ActivationCache:
         for batch_idx in range(batch_size):
             if batch_idx not in self.current_token_count[layer_name]:
                 self.current_token_count[layer_name][batch_idx] = 0
-                
+        # print(seq_len)
         if seq_len == 1:  # Streaming case
             for batch_idx in range(batch_size):
                 self.current_token_count[layer_name][batch_idx] += 1
@@ -170,12 +170,12 @@ class ActivationCache:
                     # Ensure we keep batch dimension by using unsqueeze
                     act_np = activation[batch_idx:batch_idx+1, -1, :].detach().cpu().numpy()
                     self.activations[layer_name].append(act_np)
-        else:  # Batch case
-            index = self.pred_token_idx if self.pred_token_idx >= 0 else seq_len + self.pred_token_idx
-            if 0 <= index < seq_len:
-                pred_activation = activation[:, index, :]  # This keeps batch dimension
-                act_np = pred_activation.detach().cpu().numpy()
-                self.activations[layer_name].append(act_np)
+        # else:  # Batch case
+        #     index = self.pred_token_idx if self.pred_token_idx >= 0 else seq_len + self.pred_token_idx
+        #     if 0 <= index < seq_len:
+        #         pred_activation = activation[:, index, :]  # This keeps batch dimension
+        #         act_np = pred_activation.detach().cpu().numpy()
+        #         self.activations[layer_name].append(act_np)
 
     def reset_counters(self):
         """Reset token counters for new generation"""
