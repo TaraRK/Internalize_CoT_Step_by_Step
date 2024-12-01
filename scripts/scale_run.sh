@@ -1,4 +1,4 @@
-for i in $(seq 101 5 126); do
+for i in $(seq 46 5 50); do
     echo "Running checkpoint $i"
     python src/generate.py \
         --from_pretrained trained_models/launch2/checkpoint_$i \

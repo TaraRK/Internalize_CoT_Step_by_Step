@@ -1,15 +1,76 @@
+#%%
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
+import glob
+import itertools as it
+import matplotlib.pyplot as plt
 
-activations_path = 'cached_activations/final/transformer_layer_5_first_pred.npy'
-probe1_outputs_path = 'probe1_expected_outputs.npy'
+from sklearn.linear_model import LogisticRegression
+import os
 
-activations = np.load(activations_path)  # Shape: (1000, 768)
-outputs = np.load(probe1_outputs_path)   # Shape: (1000,)
+#%%
+activations_dir = 'cached_activations/final/'
+
+probe_labels_path = 'probe_labels.npy'
+probe_labels = np.load('probe_labels.npy', allow_pickle=True).item() # Shape: (1000,)
+suffix = "_pred_token_2"
+
+all_activations = [np.load(os.path.join(activations_dir, f"embedding{suffix}.npy"))]
+for i in range(12):
+    activations = np.load(os.path.join(activations_dir, f"transformer_layer_{i}{suffix}.npy"))  # Shape: (1000, 768)
+    all_activations.append(activations)
+
+all_activations = np.array(all_activations)
+
+print(all_activations.shape)
+layer_names = ['embed'] + list(it.chain(*[
+    [f"layer_{i}_resid"]
+    for i in range(12)
+]))
+layer_idxs = list(range(len(layer_names)))
+#%% 
+layerwise_type_scores = {
+    score_type: [] for score_type in probe_labels
+}
+
+
+def get_linear_probe_scores(reps, labels, split=0.8):
+    state_probe = LogisticRegression(max_iter=1000)
+    shuffle_idx = np.random.permutation(len(reps))
+    reps = reps[shuffle_idx]
+    labels = labels[shuffle_idx]
+    num_train = int(split * len(reps))
+    train_reps, test_reps = reps[:num_train,:], reps[num_train:,:]  
+    train_states, test_states = labels[:num_train], labels[num_train:]
+    state_probe.fit(train_reps, train_states)
+    return state_probe.score(test_reps, test_states), state_probe
+
+probe_labels.keys()
+#%% 
+for layer in tqdm(layer_idxs):
+    for score_type in probe_labels:
+        score, _ = get_linear_probe_scores(
+            all_activations[layer], probe_labels[score_type],
+        )
+        layerwise_type_scores[score_type].append(score)
+        print(f"Layer {layer} {score_type} score: {score}")
+
+
+#%% 
+plt.figure(figsize=(15,10))
+for score_type in layerwise_type_scores:
+    plt.plot(layerwise_type_scores[score_type], label=score_type)
+plt.xticks(range(len(layer_idxs)), [layer_names[idx] for idx in layer_idxs], rotation=90)
+plt.gca().xaxis.grid(True)
+plt.ylim(0, 1)  # Set y-axis limits from 0 to 1
+plt.legend()
+plt.show()
+#%%
 ## Hacky normalization
 outputs_min = outputs.min()
 outputs_max = outputs.max()

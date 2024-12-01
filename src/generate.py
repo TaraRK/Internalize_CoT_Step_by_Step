@@ -179,6 +179,8 @@ def evaluate(dataloader, tokenizer, device, ctx, model, max_new_tokens, n=2, lay
             labels = batch['labels_all']
             sep_positions = get_sep_position(input_ids_all, tokenizer.eos_token_id)
             input_ids = input_ids_all[:, :sep_positions.max()+1]
+            # for input_id in input_ids:
+            #     print(tokenizer.decode(input_id))
             
             if activation_cache is not None:
                 activation_cache.reset_counters()  # Reset counter before each generation
@@ -198,7 +200,6 @@ def evaluate(dataloader, tokenizer, device, ctx, model, max_new_tokens, n=2, lay
 
             if activation_cache is not None and (total_samples_processed % checkpoint_every == 0):
                 activation_cache.save_checkpoint(total_samples_processed)
-
             
 
     finally:
@@ -226,6 +227,7 @@ def main():
                   help='Which prediction token to cache activations for. -1 means last token.')
 
     parser.add_argument('--cache_dir', type=str, default='activation_cache', help='Directory to store cached activations')
+    parser.add_argument('--use_cpu', type=bool, default=False)
     parser.set_defaults(bf16=False)
     args = parser.parse_args()
 
@@ -262,7 +264,7 @@ def main():
         args.max_new_tokens,
         args.pred_token_idx,
         layer_names=args.layer_names,
-        cache_dir=args.cache_dir
+        cache_dir=args.cache_dir, 
     )
 
     print (f"Test Accuracy: {accuracy}. Throughput: {throughput}")

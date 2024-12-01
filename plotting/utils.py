@@ -13,7 +13,7 @@ def concat_plots_from_folder(folder_path="pca_results_labels_2"):
     """
     # Get all image files in folder
     image_files = [
-        os.path.join(folder_path, f"transformer_layer_{i}_pca.png") for i in range(12)
+        os.path.join(folder_path, f"transformer_layer_{i}_t-sne projection.png") for i in range(12)
     ]
     
     if not image_files:

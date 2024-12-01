@@ -1,27 +1,30 @@
+#%% 
+
 import numpy as np
 import os
-
-# Path to the activations
-activations_path = 'cached_activations/final/transformer_layer_5_first_pred.npy'
-
-# Load the activations (assuming they are saved as a numpy array)
-activations = np.load(activations_path)
-
-# Number of examples
-num_examples = activations.shape[0]
+from tqdm import tqdm
 
 # Initialize lists to store expected outputs for each probe
-probe1_outputs = []
-probe2_outputs = []
-probe3_outputs = []
-probe4_outputs = []
+probe_labels = { 
+    'First Num of Output': [], 
+    'Second Num of Output': [],
+    'First Num of Output (Reversed)': [],
+    'First Input': [],
+    'Second Input': [],
+    'Output': [],
+    'Mid 1': [],
+    'Mid 2': [],
+    'Mid 3': [],
+    'Mid 4': [],
+}
 
 # Assuming your dataset is a list of strings (one per example)
 # Load dataset from file
 with open('data/4_by_4_mult/test_bigbench.txt', 'r') as f:
     dataset = [line.strip() for line in f.readlines()]
+    num_examples = len(dataset)
 
-for idx, data_point in enumerate(dataset):
+for idx, data_point in tqdm(enumerate(dataset)):
     tokens = data_point.split(" ")
     
     if len(tokens) < 9:
@@ -34,7 +37,7 @@ for idx, data_point in enumerate(dataset):
     dcba_str = ''.join(reversed_digits)
     try:
         dcba = int(dcba_str)
-        print(dcba)
+        # print(dcba)
     except ValueError:
         print(f"Data point {idx}: Unable to convert dcba '{dcba_str}' to integer.")
         continue
@@ -59,30 +62,39 @@ for idx, data_point in enumerate(dataset):
         print(f"Data point {idx}: Non-integer value found in digits after '*'.")
         continue
     
+    output = data_point.split('####')[1].strip().split(' ')
+    probe_labels['Output'].append(int("".join(output[::-1])))
+    probe_labels['First Num of Output'].append(int(output[0]))
+    probe_labels['Second Num of Output'].append(int(output[1]))
+    probe_labels['First Num of Output (Reversed)'].append(int(output[-1]))
+    probe_labels['First Input'].append(dcba)
 
-    output1 = dcba * e
-    output2 = dcba * (f * 10)
-    output3 = dcba * (g * 100)
-    output4 = dcba * (h * 1000)
+    hgfe = h * 1000 + g * 100 + f * 10 + e
+    probe_labels['Second Input'].append(hgfe)
+
+    mid1 = dcba * e
+    probe_labels['Mid 1'].append(mid1)
     
-
-    probe1_outputs.append(output1)
-    probe2_outputs.append(output2)
-    probe3_outputs.append(output3)
-    probe4_outputs.append(output4)
+    mid2 = dcba * (f * 10)
+    probe_labels['Mid 2'].append(mid2)
+    
+    mid3 = dcba * (g * 100)
+    probe_labels['Mid 3'].append(mid3)
+    
+    mid4 = dcba * (h * 1000)
+    probe_labels['Mid 4'].append(mid4)
     
 
     if (idx + 1) % 100 == 0:
         print(f"Processed {idx + 1}/{num_examples} data points.")
+    # print(data_point) 
+    # print(probe_labels)
 
+for key, value in probe_labels.items():
+    probe_labels[key] = np.array(value)
 
-probe1_outputs = np.array(probe1_outputs)
-probe2_outputs = np.array(probe2_outputs)
-probe3_outputs = np.array(probe3_outputs)
-probe4_outputs = np.array(probe4_outputs)
+np.save('probe_labels.npy', probe_labels)
 
-
-np.save('probe1_expected_outputs.npy', probe1_outputs)
-np.save('probe2_expected_outputs.npy', probe2_outputs)
-np.save('probe3_expected_outputs.npy', probe3_outputs)
-np.save('probe4_expected_outputs.npy', probe4_outputs)
+# %%
+probe_labels = np.load('probe_labels.npy', allow_pickle=True).item()
+# %%
