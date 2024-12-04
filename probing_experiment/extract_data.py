@@ -5,18 +5,31 @@ import os
 from tqdm import tqdm
 
 # Initialize lists to store expected outputs for each probe
-probe_labels = { 
-    'First Num of Output': [], 
+probe_labels_logistical = { 
+    'First Num of Output': [],
     'Second Num of Output': [],
-    'First Num of Output (Reversed)': [],
+    'Actual First Num of Output': [],
+}
+probe_labels_linear = {
     'First Input': [],
     'Second Input': [],
     'Output': [],
-    'Mid 1': [],
-    'Mid 2': [],
-    'Mid 3': [],
-    'Mid 4': [],
+    '1st Input x Last Digit': [],
+    '1st Input x 10 x 2nd Digit': [],
+    '1st Input x 100 x 3rd Digit': [],
+    '1st Input x 1000 x 4th Digit': [], 
 }
+probe_labels_log = {
+    'Log Output': [],
+    'Log Output - 1st Input x Last Digit': [],
+    'Log Output - 1st Input x 10 x 2nd Digit': [],
+    'Log Output - 1st Input x 100 x 3rd Digit': [],
+    'Log Output - 1st Input x 1000 x 4th Digit': [],
+}
+probe_labels_is_digit_x = [
+    [ [] for _ in range(10)] for _ in range(8)
+]
+
 
 # Assuming your dataset is a list of strings (one per example)
 # Load dataset from file
@@ -63,38 +76,61 @@ for idx, data_point in tqdm(enumerate(dataset)):
         continue
     
     output = data_point.split('####')[1].strip().split(' ')
-    probe_labels['Output'].append(int("".join(output[::-1])))
-    probe_labels['First Num of Output'].append(int(output[0]))
-    probe_labels['Second Num of Output'].append(int(output[1]))
-    probe_labels['First Num of Output (Reversed)'].append(int(output[-1]))
-    probe_labels['First Input'].append(dcba)
+    probe_labels_linear['Output'].append(int("".join(output[::-1])))
+    probe_labels_logistical['First Num of Output'].append(int(output[0]))
+    probe_labels_logistical['Second Num of Output'].append(int(output[1]))
+    probe_labels_logistical['Actual First Num of Output'].append(int(output[-1]))
+    probe_labels_linear['First Input'].append(dcba)
 
     hgfe = h * 1000 + g * 100 + f * 10 + e
-    probe_labels['Second Input'].append(hgfe)
+    probe_labels_linear['Second Input'].append(hgfe)
 
     mid1 = dcba * e
-    probe_labels['Mid 1'].append(mid1)
+    probe_labels_linear['1st Input x Last Digit'].append(mid1)
     
     mid2 = dcba * (f * 10)
-    probe_labels['Mid 2'].append(mid2)
+    probe_labels_linear['1st Input x 10 x 2nd Digit'].append(mid2)
     
     mid3 = dcba * (g * 100)
-    probe_labels['Mid 3'].append(mid3)
+    probe_labels_linear['1st Input x 100 x 3rd Digit'].append(mid3)
     
     mid4 = dcba * (h * 1000)
-    probe_labels['Mid 4'].append(mid4)
+    probe_labels_linear['1st Input x 1000 x 4th Digit'].append(mid4)
     
+    probe_labels_log['Log Output'].append(np.log10(float("".join(output[::-1]))+1e-10))
+    probe_labels_log['Log Output - 1st Input x Last Digit'].append(np.log10(float(mid1) + 1e-10))
+    probe_labels_log['Log Output - 1st Input x 10 x 2nd Digit'].append(np.log10(float(mid2) + 1e-10))
+    probe_labels_log['Log Output - 1st Input x 100 x 3rd Digit'].append(np.log10(float(mid3) + 1e-10))
+    probe_labels_log['Log Output - 1st Input x 1000 x 4th Digit'].append(np.log10(float(mid4) + 1e-10))
+    for i in range(len(output)): 
+        output_digit = int(output[i])
+        for digit in range(10): 
+            if output_digit == digit: 
+                probe_labels_is_digit_x[i][digit].append(1)
+            else: 
+                probe_labels_is_digit_x[i][digit].append(0)
+    
+
 
     if (idx + 1) % 100 == 0:
         print(f"Processed {idx + 1}/{num_examples} data points.")
     # print(data_point) 
     # print(probe_labels)
 
-for key, value in probe_labels.items():
-    probe_labels[key] = np.array(value)
+for key, value in probe_labels_logistical.items():
+    probe_labels_logistical[key] = np.array(value)
 
-np.save('probe_labels.npy', probe_labels)
+for key, value in probe_labels_linear.items():
+    probe_labels_linear[key] = np.array(value)
 
-# %%
-probe_labels = np.load('probe_labels.npy', allow_pickle=True).item()
+for key, value in probe_labels_log.items():
+    probe_labels_log[key] = np.array(value)
+
+probe_labels_is_digit_x = np.array(probe_labels_is_digit_x)
+
+np.save('probe_labels_logistical.npy', probe_labels_logistical)
+np.save('probe_labels_linear.npy', probe_labels_linear)
+np.save('probe_labels_log.npy', probe_labels_log)
+np.save('probe_labels_is_digit_x.npy', probe_labels_is_digit_x)
+
 # %%
