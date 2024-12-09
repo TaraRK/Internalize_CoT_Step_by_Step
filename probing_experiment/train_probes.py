@@ -36,31 +36,31 @@ layer_names = ['embed'] + list(it.chain(*[
 ]))
 layer_idxs = list(range(len(layer_names)))
 #%% 
-def get_linear_probe_scores(reps, labels, split=0.8, fit_type='logistic'):
+def get_linear_probe_scores(reps, labels, split=0.8, fit_type='linear'):
     if fit_type == 'logistic': 
         state_probe = LogisticRegression(max_iter=1000)
     elif fit_type == 'lasso': 
         state_probe = Lasso(alpha=0.1)
     elif fit_type == 'ridge': 
         state_probe = Ridge(alpha=0.1)
-    else:
+    elif fit_type == 'linear': 
         state_probe = LinearRegression()
     shuffle_idx = np.random.permutation(len(reps))
     reps = reps[shuffle_idx]
     labels = labels[shuffle_idx]
     num_train = int(split * len(reps))
     train_reps, test_reps = reps[:num_train,:], reps[num_train:,:]  
-    # Check for infinite or very large values in labels
-    mask = np.isfinite(labels) & (np.abs(labels) < 1e10)
-    if not np.all(mask):
-        print("Invalid values found:")
-        print("Labels with inf:", np.sum(~np.isfinite(labels)))
-        print("Labels with large values:", np.sum(np.abs(labels) >= 1e10))
-        print("Sample of invalid labels:", labels[~mask][:5])
-        print(f"Warning: Found {np.sum(~mask)} invalid values in labels. Filtering them out.")
-        reps = reps[mask]
-        labels = labels[mask]
-        num_train = int(split * len(reps))
+    # # Check for infinite or very large values in labels
+    # mask = np.isfinite(labels) & (np.abs(labels) < 1e10)
+    # if not np.all(mask):
+    #     print("Invalid values found:")
+    #     print("Labels with inf:", np.sum(~np.isfinite(labels)))
+    #     print("Labels with large values:", np.sum(np.abs(labels) >= 1e10))
+    #     print("Sample of invalid labels:", labels[~mask][:5])
+    #     print(f"Warning: Found {np.sum(~mask)} invalid values in labels. Filtering them out.")
+    #     reps = reps[mask]
+    #     labels = labels[mask]
+    #     num_train = int(split * len(reps))
 
     train_states, test_states = labels[:num_train], labels[num_train:]
     state_probe.fit(train_reps, train_states)
@@ -71,30 +71,47 @@ layerwise_type_scores = {
     score_type: [] for score_type in probe_labels_linear
 }
 probes = { 
+    score_type: [] for score_type in probe_labels_linear
 }
 for layer in tqdm(layer_idxs):
     for score_type in probe_labels_linear:
-        score, probes[score_type] = get_linear_probe_scores(
+        score, probe = get_linear_probe_scores(
             all_activations[layer], probe_labels_linear[score_type], fit_type='lasso'
         )
+        probes[score_type].append(probe)
         layerwise_type_scores[score_type].append(score)
         print(f"Layer {layer} {score_type} score: {score}")
-
 #%% 
-for activation in all_activations[10]:
-    print(probes['Output'].predict(activation.reshape(1, -1)))
+for score_type in probe_labels_linear:
+    print(score_type)
+    for activation, label in zip(all_activations[-1][:10], probe_labels_linear[score_type][:10]):
+        print(probes[score_type][-1].predict(activation.reshape(1, -1)), label)
+#%% 
+for score_type in layerwise_type_scores:
+    print(score_type)
+    print(layerwise_type_scores[score_type][-5:])
 #%%
-print(sorted(probes['Output'].coef_))
-#%%
-plt.figure(figsize=(15,10))
+plt.figure(figsize=(15,8))
+plt.rcParams.update({'font.size': 24})
+plt.rcParams['axes.titlesize'] = 28
+plt.rcParams['axes.labelsize'] = 24
+plt.rcParams['xtick.labelsize'] = 20
+plt.rcParams['ytick.labelsize'] = 20
+plt.rcParams['legend.fontsize'] = 20
+
+ax = plt.gca()
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+
 for score_type in layerwise_type_scores:
     plt.plot(layerwise_type_scores[score_type], label=score_type)
-plt.xticks(range(len(layer_idxs)), [layer_names[idx] for idx in layer_idxs], rotation=90)
-plt.gca().xaxis.grid(True)
+plt.xticks(range(len(layer_idxs)), [layer_names[idx] for idx in layer_idxs], rotation=45)
+ax.grid(linestyle='--', alpha=0.4)
 plt.ylim(0, 1)  # Set y-axis limits from 0 to 1
+plt.title(r'Linear Probe $R^2$ Scores Across Model Layers', pad=20)
 plt.legend()
+plt.tight_layout()
 plt.show()
-
 #%% 
 layerwise_type_scores_logistical = {
     score_type: [] for score_type in probe_labels_logistical
@@ -123,7 +140,7 @@ layerwise_type_scores_log = {
 for layer in tqdm(layer_idxs):
     for score_type in probe_labels_log:
         score, _ = get_linear_probe_scores(
-            all_activations[layer], probe_labels_log[score_type], fit_type='lasso'
+            all_activations[layer], probe_labels_log[score_type], fit_type='ridge'
         )
         layerwise_type_scores_log[score_type].append(score)
         print(f"Layer {layer} {score_type} score: {score}")

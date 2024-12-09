@@ -1,6 +1,6 @@
 python src/generate.py \
     --from_pretrained  trained_models/final_checkpoint \
-    --test_path "data/4_by_4_mult/test_bigbench.txt" \
+    --test_path "data/4_by_4_mult/train.txt" \
     --batch_size 1 \
     --pred_token_idx 2 \
     --layer_names embedding transformer_layer_0 transformer_layer_1 transformer_layer_2 transformer_layer_3 transformer_layer_4 \

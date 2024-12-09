@@ -14,29 +14,50 @@ import sys
 
 #%% 
 
-def extract_labels_from_expressions(expressions_file: str) -> Tuple[List[str], np.ndarray]:
-    """Extract sequences and convert them to numbers"""
+#def extract_labels_from_expressions(expressions_file: str) -> Tuple[List[str], np.ndarray]:
+#     """Extract sequences and convert them to numbers"""
+#     full_labels = []
+#     numeric_values = []
+    
+#     with open(expressions_file, 'r') as f:
+#         for line in f:
+#             parts = line.strip().split('#')
+#             parts2 = line.strip().split('||')
+#             if len(parts) > 1 and len(parts2) > 1:
+#                 input = parts2[0].strip()[::-1]
+#                 output = parts[-1].strip()[::-1]
+#                 full_labels.append(f"{input} || {output}")
+#                 # Convert space-separated sequence to single number
+#                 num = int(''.join(output.split()))
+#                 numeric_values.append(num)
+#     return full_labels, np.array(numeric_values)
+
+def extract_labels_from_expressions(expressions_file: str, pred_token_idx: int) -> Tuple[List[str], np.ndarray]:
+    """Extract sequences and convert them to numbers based on prediction index after ####"""
     full_labels = []
     numeric_values = []
     
     with open(expressions_file, 'r') as f:
         for line in f:
-            parts = line.strip().split('#')
-            parts2 = line.strip().split('||')
-            if len(parts) > 1 and len(parts2) > 1:
-                input = parts2[0].strip()[::-1]
-                output = parts[-1].strip()[::-1]
-                full_labels.append(f"{input} || {output}")
-                # Convert space-separated sequence to single number
-                num = int(''.join(output.split()))
-                numeric_values.append(num)
+            if '####' in line:
+                parts = line.strip().split('####')
+                if len(parts) == 2:
+                    input_part = parts[0].strip()
+                    prediction_part = parts[1].strip()
+                    # Split prediction part into tokens and get the token at pred_token_idx
+                    pred_tokens = prediction_part.split()
+                    if pred_token_idx < len(pred_tokens):
+                        target_token = pred_tokens[pred_token_idx]
+                        full_labels.append(f"{input_part} #### {prediction_part}")
+                        numeric_values.append(int(target_token))
+    
     return full_labels, np.array(numeric_values)
 
-full_labels, numeric_values = extract_labels_from_expressions("data/4_by_4_mult/test_bigbench.txt")
+# full_labels, numeric_values = extract_labels_from_expressions("data/4_by_4_mult/test_bigbench.txt")
 #%% 
 def load_activations_with_labels(activation_dir: str, expressions_file: str, pred_token_idx: int):
     """Load activations from final folder and their corresponding labels"""
-    full_labels, numeric_values = extract_labels_from_expressions(expressions_file)
+    full_labels, numeric_values = extract_labels_from_expressions(expressions_file, pred_token_idx)
     print(f"Loaded {len(full_labels)} labels")
     
     final_dir = os.path.join(activation_dir, "final")
@@ -72,17 +93,22 @@ def create_scatter_plot(transformed, numeric_values, full_labels, layer_name, sa
         y=transformed[:, 1],
         mode='markers',
         marker=dict(
-            size=8,
+            size=16,  # Increased marker size
             color=numeric_values,
             colorscale='Viridis',
-            colorbar=dict(title='Numeric Value'),
+            colorbar=dict(
+                title='Numeric Value',
+                titlefont=dict(size=24),  # Increased font size
+                tickfont=dict(size=20)  # Increased tick font size
+            ),
             opacity=0.6
         ),
         text=full_labels,  # Add hover text showing full labels
-        hovertemplate='<b>Value:</b> %{marker.color}<br>' +
-                     '<b>Label:</b> %{text}<br>' +
-                     '<b>{xaxis_title}:</b> %{x:.2f}<br>' +
-                     '<b>{yaxis_title}:</b> %{y:.2f}<extra></extra>'
+        hovertemplate='<b style="font-size:20px">Value:</b> %{marker.color}<br>' +
+                     '<b style="font-size:20px">Label:</b> %{text}<br>' +
+                     '<b style="font-size:20px">{xaxis_title}:</b> %{x:.2f}<br>' +
+                     '<b style="font-size:20px">{yaxis_title}:</b> %{y:.2f}<extra></extra>',
+        hoverlabel=dict(font_size=20)  # Increased hover label font size
     ))
     
     # Update layout
@@ -90,8 +116,8 @@ def create_scatter_plot(transformed, numeric_values, full_labels, layer_name, sa
         title=f'{layer_name} - {title}',
         xaxis_title=xaxis_title,
         yaxis_title=yaxis_title,
-        width=1000,
-        height=800,
+        width=1200,  # Increased width
+        height=600,  # Decreased height
         template='plotly_white',  # Clean white background with grid
         xaxis=dict(
             tickfont=dict(size=24),
