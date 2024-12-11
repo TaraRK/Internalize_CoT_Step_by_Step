@@ -1,3 +1,8 @@
 # Internalize CoT Step by Step
 
-This is the fork of the original repo. Put the model u wanna use according to the original readme. The activations will get stored in cached_activations.
+This is the fork of the original repository. The code structure is as follows: 
+
+- probing experiment: our probing exeriments
+- plotting: any code used for visualizations and plots produces including the pca visualizations and the t-SNE visualizations
+- src: source code for generation, we attached hooks to cache activations in generate.py and utils.py, we also use train.py to train the model.
+- scripts: examples of scripts we use to run the code
