@@ -172,7 +172,7 @@ def evaluate(dataloader, tokenizer, device, ctx, model, max_new_tokens, n=2, lay
         from activation_utils import ActivationCache, attach_hooks_to_layers
         activation_cache = ActivationCache(cache_dir, pred_token_idx=n)
         hooks = attach_hooks_to_layers(model, layer_names, activation_cache)
-
+    
     try:
         for batch_idx, batch in enumerate(tqdm.tqdm(dataloader)):
             input_ids_all = batch['input_ids_all'].to(device)

@@ -37,6 +37,7 @@ class CoTDataset(Dataset):
             #                                                                 and len(line.split('||')) ==2 )]
             lines = [line.strip().split('||') for line in f.readlines() if (len(line.strip()) > 0 and not line.strip().isspace()
                                                                              and len(line.strip().split('||')) ==2 )]
+            lines = lines[:10000]
         if max_size > 0:
             print (f'truncated to {max_size}')
             lines = lines[:max_size]

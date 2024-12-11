@@ -25,6 +25,8 @@ probe_labels_log = {
     'Log Output - 1st Input x 10 x 2nd Digit': [],
     'Log Output - 1st Input x 100 x 3rd Digit': [],
     'Log Output - 1st Input x 1000 x 4th Digit': [],
+    'Log First Input': [],
+    'Log Second Input': [],
 }
 probe_labels_is_digit_x = [
     [ [] for _ in range(10)] for _ in range(8)
@@ -33,13 +35,15 @@ probe_labels_is_digit_x = [
 
 # Assuming your dataset is a list of strings (one per example)
 # Load dataset from file
-with open('data/4_by_4_mult/test_bigbench.txt', 'r') as f:
-    dataset = [line.strip() for line in f.readlines()]
-    num_examples = len(dataset)
+num_examples = 10000
+with open('data/4_by_4_mult/train.txt', 'r') as f:
+    dataset = [line.strip() for line in f.readlines()][:num_examples]
 
+#%%
+dataset[:10]
+#%% 
 for idx, data_point in tqdm(enumerate(dataset)):
     tokens = data_point.split(" ")
-    
     if len(tokens) < 9:
         print(f"Data point {idx} does not have enough tokens.")
         continue
@@ -102,6 +106,8 @@ for idx, data_point in tqdm(enumerate(dataset)):
     probe_labels_log['Log Output - 1st Input x 10 x 2nd Digit'].append(np.log10(float(mid2) + 1e-10))
     probe_labels_log['Log Output - 1st Input x 100 x 3rd Digit'].append(np.log10(float(mid3) + 1e-10))
     probe_labels_log['Log Output - 1st Input x 1000 x 4th Digit'].append(np.log10(float(mid4) + 1e-10))
+    probe_labels_log['Log First Input'].append(np.log10(float(dcba) + 1e-10))
+    probe_labels_log['Log Second Input'].append(np.log10(float(hgfe) + 1e-10))
     for i in range(len(output)): 
         output_digit = int(output[i])
         for digit in range(10): 
@@ -121,6 +127,13 @@ for key, value in probe_labels_logistical.items():
     probe_labels_logistical[key] = np.array(value)
 
 for key, value in probe_labels_linear.items():
+    # if key != 'Output':     
+    #     probe_labels_linear[key] = np.array(value)
+    # else: 
+    min_val = min(value)
+    max_val = max(value)
+    if max_val != min_val:  # Avoid division by zero
+        value = [((x - min_val) / (max_val - min_val)) * 100 for x in value]
     probe_labels_linear[key] = np.array(value)
 
 for key, value in probe_labels_log.items():
@@ -133,4 +146,11 @@ np.save('probe_labels_linear.npy', probe_labels_linear)
 np.save('probe_labels_log.npy', probe_labels_log)
 np.save('probe_labels_is_digit_x.npy', probe_labels_is_digit_x)
 
+# %%
+for data in dataset[:5]:
+    print(data)
+
+for key, value in probe_labels_linear.items():
+    print(key)
+    print(value[:5])
 # %%

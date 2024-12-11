@@ -29,25 +29,27 @@ with open(log_path, 'r') as f:
             epochs.append(len(steps)-1)  # Store index of last step before new epoch
             current_epoch = int(epoch_match.group(1))
 
-# Create figure with two y-axes
-fig, ax1 = plt.subplots(figsize=(15,8))
+# Create high resolution figure with two y-axes
+plt.rcParams['figure.dpi'] = 300
+plt.rcParams['savefig.dpi'] = 300
+fig, ax1 = plt.subplots(figsize=(15,4))
 ax2 = ax1.twinx()
 
-# Increase font sizes
-plt.rcParams.update({'font.size': 14})
-plt.rcParams['axes.titlesize'] = 16
-plt.rcParams['axes.labelsize'] = 14
-plt.rcParams['xtick.labelsize'] = 12
-plt.rcParams['ytick.labelsize'] = 12
-plt.rcParams['legend.fontsize'] = 12
+# # Increase font sizes
+# plt.rcParams.update({'font.size': 28})
+# plt.rcParams['axes.titlesize'] = 32
+# plt.rcParams['axes.labelsize'] = 28
+# plt.rcParams['xtick.labelsize'] = 24
+# plt.rcParams['ytick.labelsize'] = 24
+# plt.rcParams['legend.fontsize'] = 24
 
-# Plot PPL
-p1 = ax1.plot(steps, ppls, 'b-', label='PPL')
+# Plot PPL with higher line width
+p1 = ax1.plot(steps, ppls, 'b-', label='PPL', linewidth=2)
 ax1.set_ylabel('Perplexity', color='b')
 ax1.tick_params(axis='y', labelcolor='b')
 
-# Plot accuracy
-p2 = ax2.plot(steps, accuracies, 'r-', label='Accuracy')
+# Plot accuracy with higher line width
+p2 = ax2.plot(steps, accuracies, 'r-', label='Accuracy', linewidth=2)
 ax2.set_ylabel('Token Accuracy', color='r')
 ax2.tick_params(axis='y', labelcolor='r')
 
@@ -55,19 +57,23 @@ ax2.tick_params(axis='y', labelcolor='r')
 ax3 = ax1.twiny()
 ax3.set_xlim(ax1.get_xlim())
 ax3.set_xticks(steps[::len(steps)//10])  # Show ~10 epoch ticks
-ax3.set_xticklabels([f"Epoch: {n}" if n == 0 else f"{n}" for n in epoch_numbers[::len(steps)//10 ]])
+ax3.set_xticklabels([f"Epoch: {n}" if n == 0 else f"{n}" for n in epoch_numbers[::len(steps)//10]], ha='right')
 
-# Add vertical lines for epoch transitions
-for epoch_idx in epochs:
-    ax1.axvline(x=steps[epoch_idx], color='gray', linestyle='--', alpha=0.5)
+# Add vertical lines for epoch transitions with higher line width, but only every 2 epochs
+for i, epoch_idx in enumerate(epochs):
+    if i % 2 == 0:  # Only draw line for even-numbered epochs
+        ax1.axvline(x=steps[epoch_idx], color='gray', linestyle='--', alpha=0.5, linewidth=1.5)
 
 # Add legend
 lines = p1 + p2
 labels = [l.get_label() for l in lines]
 ax1.legend(lines, labels, loc='center right')
 
-ax1.set_xlabel('Training Steps')
-plt.title('Training Progress')
+ax1.set_xlabel('Training Steps (each epoch has 25000 steps)')
+plt.title('Model Performance Evaluation during Training', pad=20)
+
+# Ensure layout is tight to avoid text cutoff
+# plt.tight_layout()
 plt.show()
 
 # Display summary statistics
